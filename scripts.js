@@ -14,6 +14,11 @@ function rotatePoint(x, y, angle, cx, cy) {
   return [rx, ry];
 }
 
+// Helper: Compare two points with a tolerance.
+function pointsEqual(p1, p2, tol = 0.1) {
+  return Math.abs(p1[0] - p2[0]) < tol && Math.abs(p1[1] - p2[1]) < tol;
+}
+
 // InfoModal: Manages the "About CHAKRA" modal dialog.
 class InfoModal {
   constructor(resetCallback) {
@@ -620,16 +625,23 @@ class GameApp {
     }
   }
   
+  // Modified validJumpMove: Only allow jump moves along a straight line (i.e. where the midpoint matches)
   validJumpMove(source, dest) {
     if (!this.boardState[source] || this.boardState[dest] !== null) return null;
-    let sx = this.nodePositions[source][0],
-        sy = this.nodePositions[source][1];
-    let dx = this.nodePositions[dest][0],
-        dy = this.nodePositions[dest][1];
-    let totalDist = Math.hypot(dx - sx, dy - sy);
-    if (totalDist === 0) return null;
+    const sx = this.nodePositions[source][0],
+          sy = this.nodePositions[source][1];
+    const dx = this.nodePositions[dest][0],
+          dy = this.nodePositions[dest][1];
+    // Expected midpoint (should be exactly halfway if in a straight line)
+    const expectedMid = [(sx + dx) / 2, (sy + dy) / 2];
+
+    // Iterate through possible mid nodes that are neighbors of source
     for (let mid of this.graph[source]) {
+      // Only consider mid if it's connected to dest
       if (!this.graph[mid].includes(dest)) continue;
+      // Check if mid is exactly at the expected midpoint (within a tolerance)
+      if (!pointsEqual(this.nodePositions[mid], expectedMid)) continue;
+      // Ensure mid holds an opponent piece
       if (!this.boardState[mid] || this.boardState[mid].player === this.boardState[source].player)
         continue;
       return mid;
