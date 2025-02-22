@@ -1,3 +1,4 @@
+
 body {
   font-family: Arial, sans-serif;
   background: #f0f0f0;
@@ -86,4 +87,23 @@ canvas {
   font-size: 24px;
   font-weight: bold;
   cursor: pointer;
+}
+
+/* Responsive adjustments for mobile devices */
+@media (max-width: 600px) {
+  #app {
+    max-width: 100%;
+    margin: 10px;
+    padding: 10px;
+  }
+
+  canvas {
+    width: 100%;
+    height: auto;
+  }
+  
+  .modal-content {
+    width: 90%;
+    max-width: 400px;
+  }
 }
