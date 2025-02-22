@@ -19,6 +19,18 @@ function pointsEqual(p1, p2, tol = 0.1) {
   return Math.abs(p1[0] - p2[0]) < tol && Math.abs(p1[1] - p2[1]) < tol;
 }
 
+// Helper: Check if point B lies on the straight line between A and C.
+function isCollinearAndBetween(A, B, C, tol = 0.1) {
+  // Check collinearity using the cross product
+  const cross = Math.abs((B[0]-A[0])*(C[1]-A[1]) - (B[1]-A[1])*(C[0]-A[0]));
+  if (cross > tol) return false;
+  // Check that B is between A and C by comparing distances.
+  const dAB = Math.hypot(B[0]-A[0], B[1]-A[1]);
+  const dBC = Math.hypot(C[0]-B[0], C[1]-B[1]);
+  const dAC = Math.hypot(C[0]-A[0], C[1]-A[1]);
+  return Math.abs(dAB + dBC - dAC) < tol;
+}
+
 // InfoModal: Manages the "About CHAKRA" modal dialog.
 class InfoModal {
   constructor(resetCallback) {
@@ -625,23 +637,16 @@ class GameApp {
     }
   }
   
-  // Modified validJumpMove: Only allow jump moves along a straight line (i.e. where the midpoint matches)
+  // Modified validJumpMove: Only allow jump moves along a straight line if the jumped node is collinear and between.
   validJumpMove(source, dest) {
     if (!this.boardState[source] || this.boardState[dest] !== null) return null;
-    const sx = this.nodePositions[source][0],
-          sy = this.nodePositions[source][1];
-    const dx = this.nodePositions[dest][0],
-          dy = this.nodePositions[dest][1];
-    // Expected midpoint (should be exactly halfway if in a straight line)
-    const expectedMid = [(sx + dx) / 2, (sy + dy) / 2];
-
-    // Iterate through possible mid nodes that are neighbors of source
+    const A = this.nodePositions[source];
+    const C = this.nodePositions[dest];
+    
     for (let mid of this.graph[source]) {
-      // Only consider mid if it's connected to dest
       if (!this.graph[mid].includes(dest)) continue;
-      // Check if mid is exactly at the expected midpoint (within a tolerance)
-      if (!pointsEqual(this.nodePositions[mid], expectedMid)) continue;
-      // Ensure mid holds an opponent piece
+      const B = this.nodePositions[mid];
+      if (!isCollinearAndBetween(A, B, C)) continue;
       if (!this.boardState[mid] || this.boardState[mid].player === this.boardState[source].player)
         continue;
       return mid;
