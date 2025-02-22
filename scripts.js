@@ -708,7 +708,7 @@ validJumpMove(source, dest) {
     setTimeout(() => this.advanceTurn(), 1500);
   }
   // New helper: Animate the board rotation to newAngle over a given duration (default 1 second).
-animateRotation(newAngle, duration = 1000) {
+  animateRotation(newAngle, duration = 1000) {
     const startAngle = this.rotationAngle;
     const startTime = performance.now();
     const animate = (currentTime) => {
