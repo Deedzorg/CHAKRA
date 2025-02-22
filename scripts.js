@@ -729,7 +729,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const mapping = { 
             'B': -Math.PI / 2,  // Bottom
             'R': Math.PI / 2, // Right
-            'T': Math.PI       // Top
+            'T': -Math.PI       // Top
         };
           newAngle = mapping[currentPlayer.area] || 0;
         } else {
