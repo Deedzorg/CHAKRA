@@ -707,12 +707,40 @@ validJumpMove(source, dest) {
     this.checkEndGame(currentPlayer);
     setTimeout(() => this.advanceTurn(), 1500);
   }
+  // New helper: Animate the board rotation to newAngle over a given duration (default 1 second).
+animateRotation(newAngle, duration = 1000) {
+    const startAngle = this.rotationAngle;
+    const startTime = performance.now();
+    const animate = (currentTime) => {
+      const elapsed = currentTime - startTime;
+      const fraction = Math.min(elapsed / duration, 1);
+      this.rotationAngle = startAngle + (newAngle - startAngle) * fraction;
+      this.drawBoard();
+      this.drawPieces();
+      if (fraction < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+  }
   
   nextTurn() {
     const currentPlayer = this.players[this.currentPlayerIndex];
+    let newAngle = 0;
     if (this.enableRotation) {
-      const mapping = { 'T': Math.PI, 'B': 0, 'R': Math.PI / 2, 'L': (3 * Math.PI) / 2 };
-      this.rotationAngle = mapping[currentPlayer.area] || 0;
+      if (this.totalPlayers === 3) {
+        // For three players, you might want the following mapping:
+        // 'T' player sees the board with 0° rotation,
+        // 'R' rotates the board 120° (2π/3), and
+        // 'B' rotates it 240° (4π/3).
+        const mapping = { 'T': 0, 'R': 2 * Math.PI / 3, 'B': 4 * Math.PI / 3 };
+        newAngle = mapping[currentPlayer.area] || 0;
+      } else {
+        // For 2 and 4 player modes, keep your existing mapping.
+        const mapping = { 'T': Math.PI, 'B': 0, 'R': Math.PI / 2, 'L': 3 * Math.PI / 2 };
+        newAngle = mapping[currentPlayer.area] || 0;
+      }
+      this.animateRotation(newAngle);
     } else {
       this.rotationAngle = 0;
     }
