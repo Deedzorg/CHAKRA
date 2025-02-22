@@ -727,8 +727,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if (this.enableRotation) {
         if (this.totalPlayers === 3) {
           const mapping = { 
-            'R': Math.PI / 2,  // Bottom
-            'B': -Math.PI / 2, // Right
+            'B': -Math.PI / 2,  // Bottom
+            'R': Math.PI / 2, // Right
             'T': Math.PI       // Top
         };
           newAngle = mapping[currentPlayer.area] || 0;
