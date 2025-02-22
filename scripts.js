@@ -3,6 +3,29 @@ document.addEventListener("DOMContentLoaded", () => {
   new MainApp(appContainer);
 });
 
+// Global Sound and TTS helpers:
+function playSound(soundFile) {
+  const audio = new Audio(soundFile);
+  audio.play().catch(err => console.error("Error playing sound:", err));
+}
+
+function speakText(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(utterance);
+}
+
+// Global helper: Check if point B lies on the straight line between A and C.
+function isCollinearAndBetween(A, B, C, tol = 10) {
+  // Calculate the cross product (its absolute value measures deviation from collinearity)
+  const cross = Math.abs((B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]));
+  if (cross > tol) return false;
+  // Check that B is between A and C by comparing distances.
+  const dAB = Math.hypot(B[0] - A[0], B[1] - A[1]);
+  const dBC = Math.hypot(C[0] - B[0], C[1] - B[1]);
+  const dAC = Math.hypot(C[0] - A[0], C[1] - A[1]);
+  return Math.abs(dAB + dBC - dAC) < tol;
+}
+
 // Helper: Rotate a point (x, y) about center (cx, cy) by angle (radians)
 function rotatePoint(x, y, angle, cx, cy) {
   const tx = x - cx;
@@ -14,24 +37,7 @@ function rotatePoint(x, y, angle, cx, cy) {
   return [rx, ry];
 }
 
-// Helper: Compare two points with a tolerance.
-function pointsEqual(p1, p2, tol = 0.1) {
-  return Math.abs(p1[0] - p2[0]) < tol && Math.abs(p1[1] - p2[1]) < tol;
-}
-
-// Helper: Check if point B lies on the straight line between A and C.
-function isCollinearAndBetween(A, B, C, tol = 0.1) {
-  // Check collinearity using the cross product
-  const cross = Math.abs((B[0]-A[0])*(C[1]-A[1]) - (B[1]-A[1])*(C[0]-A[0]));
-  if (cross > tol) return false;
-  // Check that B is between A and C by comparing distances.
-  const dAB = Math.hypot(B[0]-A[0], B[1]-A[1]);
-  const dBC = Math.hypot(C[0]-B[0], C[1]-B[1]);
-  const dAC = Math.hypot(C[0]-A[0], C[1]-A[1]);
-  return Math.abs(dAB + dBC - dAC) < tol;
-}
-
-// InfoModal: Manages the "About CHAKRA" modal dialog.
+// ----------------- InfoModal Class -----------------
 class InfoModal {
   constructor(resetCallback) {
     this.modal = document.getElementById("infoModal");
@@ -65,7 +71,7 @@ class InfoModal {
   }
 }
 
-// StartScreen: Renders the initial setup screens.
+// ----------------- StartScreen Class -----------------
 class StartScreen {
   constructor(container, startCallback) {
     this.container = container;
@@ -166,7 +172,7 @@ class StartScreen {
   }
 }
 
-// GameApp: Contains game logic, board data, drawing routines, and move handling.
+// ----------------- GameApp Class -----------------
 class GameApp {
   constructor(container, totalPlayers, humanPlayers, playerNames, playerColors, enableRotation, resetCallback) {
     this.container = container;
@@ -636,37 +642,24 @@ class GameApp {
       }
     }
   }
+  
+  // Updated jump move validation using isCollinearAndBetween:
+  validJumpMove(source, dest) {
+    if (!this.boardState[source] || this.boardState[dest] !== null) return null;
+    const A = this.nodePositions[source];
+    const C = this.nodePositions[dest];
 
-  function isCollinearAndBetween(A, B, C, tol = 10) {
-  // Compute the cross product (its absolute value measures deviation from collinearity)
-  const cross = Math.abs((B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]));
-  if (cross > tol) return false;
-  // Check that B lies between A and C by comparing distances.
-  const dAB = Math.hypot(B[0] - A[0], B[1] - A[1]);
-  const dBC = Math.hypot(C[0] - B[0], C[1] - B[1]);
-  const dAC = Math.hypot(C[0] - A[0], C[1] - A[1]);
-  return Math.abs(dAB + dBC - dAC) < tol;
-}
-
-// Updated jump move validation: 
-// Loop through source's neighbors. If one is also connected to dest, lies along the line from source to dest,
-// and holds an opponent's piece, then the jump is valid.
-validJumpMove(source, dest) {
-  if (!this.boardState[source] || this.boardState[dest] !== null) return null;
-  const A = this.nodePositions[source];
-  const C = this.nodePositions[dest];
-
-  for (let mid of this.graph[source]) {
-    if (!this.graph[mid].includes(dest)) continue;
-    const B = this.nodePositions[mid];
-    if (!isCollinearAndBetween(A, B, C)) continue;
-    if (!this.boardState[mid] || this.boardState[mid].player === this.boardState[source].player)
-      continue;
-    return mid;
+    for (let mid of this.graph[source]) {
+      if (!this.graph[mid].includes(dest)) continue;
+      const B = this.nodePositions[mid];
+      if (!isCollinearAndBetween(A, B, C)) continue;
+      if (!this.boardState[mid] || this.boardState[mid].player === this.boardState[source].player)
+        continue;
+      return mid;
+    }
+    return null;
   }
-  return null;
-}
-
+  
   highlightValidMoves(node) {
     this.drawBoard();
     this.drawPieces();
@@ -700,6 +693,9 @@ validJumpMove(source, dest) {
       this.boardState[jumpedNode] = null;
       currentPlayer.score += 1;
       this.updateScoreDisplay();
+      playSound('sounds/jump.mp3');
+    } else {
+      playSound('sounds/move.mp3');
     }
     this.selectedNode = null;
     this.drawBoard();
@@ -707,7 +703,8 @@ validJumpMove(source, dest) {
     this.checkEndGame(currentPlayer);
     setTimeout(() => this.advanceTurn(), 1500);
   }
-  // New helper: Animate the board rotation to newAngle over a given duration (default 1 second).
+  
+  // New helper: Animate the board rotation to newAngle over a given duration.
   animateRotation(newAngle, duration = 1000) {
     const startAngle = this.rotationAngle;
     const startTime = performance.now();
@@ -729,14 +726,9 @@ validJumpMove(source, dest) {
     let newAngle = 0;
     if (this.enableRotation) {
       if (this.totalPlayers === 3) {
-        // For three players, you might want the following mapping:
-        // 'T' player sees the board with 0° rotation,
-        // 'R' rotates the board 120° (2π/3), and
-        // 'B' rotates it 240° (4π/3).
         const mapping = { 'T': 0, 'R': 2 * Math.PI / 3, 'B': 4 * Math.PI / 3 };
         newAngle = mapping[currentPlayer.area] || 0;
       } else {
-        // For 2 and 4 player modes, keep your existing mapping.
         const mapping = { 'T': Math.PI, 'B': 0, 'R': Math.PI / 2, 'L': 3 * Math.PI / 2 };
         newAngle = mapping[currentPlayer.area] || 0;
       }
@@ -747,6 +739,9 @@ validJumpMove(source, dest) {
     this.drawBoard();
     this.drawPieces();
     this.showTurnLabel(currentPlayer);
+    // Announce the current turn via TTS
+    speakText(`${currentPlayer.name}'s turn`);
+    
     if (currentPlayer.type === "human") {
       if (!this.selectedNode) {
         for (let node in this.boardState) {
@@ -835,7 +830,7 @@ validJumpMove(source, dest) {
   }
 }
 
-// MainApp: Entry point for the application.
+// ----------------- MainApp Class -----------------
 class MainApp {
   constructor(container) {
     this.container = container;
