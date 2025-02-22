@@ -636,24 +636,37 @@ class GameApp {
       }
     }
   }
-  
-  // Modified validJumpMove: Only allow jump moves along a straight line if the jumped node is collinear and between.
-  validJumpMove(source, dest) {
-    if (!this.boardState[source] || this.boardState[dest] !== null) return null;
-    const A = this.nodePositions[source];
-    const C = this.nodePositions[dest];
-    
-    for (let mid of this.graph[source]) {
-      if (!this.graph[mid].includes(dest)) continue;
-      const B = this.nodePositions[mid];
-      if (!isCollinearAndBetween(A, B, C)) continue;
-      if (!this.boardState[mid] || this.boardState[mid].player === this.boardState[source].player)
-        continue;
-      return mid;
-    }
-    return null;
+
+  function isCollinearAndBetween(A, B, C, tol = 10) {
+  // Compute the cross product (its absolute value measures deviation from collinearity)
+  const cross = Math.abs((B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]));
+  if (cross > tol) return false;
+  // Check that B lies between A and C by comparing distances.
+  const dAB = Math.hypot(B[0] - A[0], B[1] - A[1]);
+  const dBC = Math.hypot(C[0] - B[0], C[1] - B[1]);
+  const dAC = Math.hypot(C[0] - A[0], C[1] - A[1]);
+  return Math.abs(dAB + dBC - dAC) < tol;
+}
+
+// Updated jump move validation: 
+// Loop through source's neighbors. If one is also connected to dest, lies along the line from source to dest,
+// and holds an opponent's piece, then the jump is valid.
+validJumpMove(source, dest) {
+  if (!this.boardState[source] || this.boardState[dest] !== null) return null;
+  const A = this.nodePositions[source];
+  const C = this.nodePositions[dest];
+
+  for (let mid of this.graph[source]) {
+    if (!this.graph[mid].includes(dest)) continue;
+    const B = this.nodePositions[mid];
+    if (!isCollinearAndBetween(A, B, C)) continue;
+    if (!this.boardState[mid] || this.boardState[mid].player === this.boardState[source].player)
+      continue;
+    return mid;
   }
-  
+  return null;
+}
+
   highlightValidMoves(node) {
     this.drawBoard();
     this.drawPieces();
