@@ -1,23 +1,38 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // Add dark mode by default
     document.body.classList.add("dark-mode");
+
+    // Get the app container and initialize the game app
     const appContainer = document.getElementById("app");
-    new MainApp(appContainer);
-    
-    // Add dark mode toggle handler from the info modal.
+    const gameApp = new MainApp(appContainer);
+
+    // Add dark mode toggle handler
     const darkModeToggle = document.getElementById("darkModeToggle");
     if (darkModeToggle) {
-      darkModeToggle.addEventListener("click", () => {
-        document.body.classList.toggle("dark-mode");
-        // Use the stored instance to redraw the board.
-        if (GameApp.instance) {
-          GameApp.instance.drawBoard();
-          GameApp.instance.drawPieces();
-          
-        }
-      });
+        darkModeToggle.addEventListener("click", () => {
+            document.body.classList.toggle("dark-mode");
+            if (GameApp.instance) {
+                GameApp.instance.drawBoard();
+                GameApp.instance.drawPieces();
+            }
+        });
     }
-  });
-  
+
+    // Get the canvas element after the gameApp is initialized
+    const canvas = document.getElementById("gameCanvas");
+
+    // Mouse Click Support
+    canvas.addEventListener("click", (event) => gameApp.onCanvasClick(event));
+
+    
+
+    // Touch Support for Mobile
+    canvas.addEventListener("touchstart", (event) => {
+        event.preventDefault(); // Prevents unwanted scrolling
+        gameApp.onCanvasClick(event.touches[0]); // Use the first touch point
+    }, { passive: false });
+});
+
 
   // Global Sound and Text-to-Speech helper functions.
   function playSound(soundFile) {
@@ -440,6 +455,9 @@ class GameApp {
     }
     
     drawBoard() {
+        // Now draw everything as normal (nodes, pieces, board, etc.)
+        // Your existing function to draw the board/pieces
+
       const darkModeActive = document.body.classList.contains("dark-mode");
       // Clear canvas and set background based on dark mode.
       if (darkModeActive) {
@@ -516,45 +534,72 @@ class GameApp {
     }
     
     onCanvasClick(event) {
-      if (this.gameOver) return;
-      const rect = this.canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      const clickedNode = this.getNodeAtPosition(x, y);
-      if (!clickedNode) return;
-      
-      const currentPlayer = this.players[this.currentPlayerIndex];
-      if (currentPlayer.type !== "human") return;
-      
-      if (this.selectedNode === null) {
-        let piece = this.boardState[clickedNode];
-        if (piece && piece.player === currentPlayer.id) {
-          this.selectedNode = clickedNode;
-          this.drawPieces();
-          this.highlightValidMoves(clickedNode);
+        // Prevent the default touch action for touch events
+        if (event.touches) {
+            event.preventDefault(); // Only for touch events
         }
-      } else {
-        if (this.boardState[clickedNode] === null) {
-          let jumped = this.validJumpMove(this.selectedNode, clickedNode);
-          if (jumped !== null) {
-            this.movePiece(this.selectedNode, clickedNode, true, jumped);
-          } else if (this.graph[this.selectedNode].includes(clickedNode)) {
-            this.movePiece(this.selectedNode, clickedNode, false);
-          } else {
-            this.selectedNode = null;
-            this.drawBoard();
-            this.drawPieces();
-          }
+    
+        // Get the canvas dimensions
+        const rect = this.canvas.getBoundingClientRect();
+    
+        // Calculate the scale factor based on actual canvas size vs displayed size
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+    
+        // Get the click position and adjust it by the scale factor
+        let x, y;
+        if (event.touches) {
+            // For touch events, use the first touch point
+            x = (event.touches[0].clientX - rect.left) * scaleX;
+            y = (event.touches[0].clientY - rect.top) * scaleY;
         } else {
-          let piece = this.boardState[clickedNode];
-          if (piece && piece.player === currentPlayer.id) {
-            this.selectedNode = clickedNode;
-            this.highlightValidMoves(clickedNode);
-            this.drawPieces();
-          }
+            // For mouse events
+            x = (event.clientX - rect.left) * scaleX;
+            y = (event.clientY - rect.top) * scaleY;
         }
-      }
+    
+        // Get the node that was clicked
+        const clickedNode = this.getNodeAtPosition(x, y);
+        if (!clickedNode) return; // If no valid node is clicked, exit early
+    
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        if (currentPlayer.type !== "human") return; // If it's not the human player's turn, exit
+    
+        // If no node is selected yet, select one
+        if (this.selectedNode === null) {
+            let piece = this.boardState[clickedNode];
+            if (piece && piece.player === currentPlayer.id) {
+                this.selectedNode = clickedNode;
+                this.drawPieces(); // Draw the selected piece
+                this.highlightValidMoves(clickedNode); // Highlight valid moves for the selected piece
+            }
+        } else {
+            // If a node is already selected, either move the piece or deselect
+            if (this.boardState[clickedNode] === null) {
+                // Check for valid jump move
+                let jumped = this.validJumpMove(this.selectedNode, clickedNode);
+                if (jumped !== null) {
+                    this.movePiece(this.selectedNode, clickedNode, true, jumped); // Perform jump move
+                } else if (this.graph[this.selectedNode].includes(clickedNode)) {
+                    this.movePiece(this.selectedNode, clickedNode, false); // Regular move
+                } else {
+                    // Invalid move, deselect the piece and redraw
+                    this.selectedNode = null;
+                    this.drawBoard();
+                    this.drawPieces();
+                }
+            } else {
+                // If clicked on another piece of the current player, select it
+                let piece = this.boardState[clickedNode];
+                if (piece && piece.player === currentPlayer.id) {
+                    this.selectedNode = clickedNode;
+                    this.highlightValidMoves(clickedNode); // Highlight valid moves for the new piece
+                    this.drawPieces(); // Redraw pieces
+                }
+            }
+        }
     }
+    
     
     validJumpMove(source, dest) {
       if (!this.boardState[source] || this.boardState[dest] !== null) return null;
