@@ -94,6 +94,7 @@ canvas {
     max-width: 400px;  
     max-height: 400px;
     image-rendering: crisp-edges;
+    touch-action: none;
 }
 
 /* Modal styling */
