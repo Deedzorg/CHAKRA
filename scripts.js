@@ -1,9 +1,25 @@
 document.addEventListener("DOMContentLoaded", () => {
+    document.body.classList.add("dark-mode");
     const appContainer = document.getElementById("app");
     new MainApp(appContainer);
+    
+    // Add dark mode toggle handler from the info modal.
+    const darkModeToggle = document.getElementById("darkModeToggle");
+    if (darkModeToggle) {
+      darkModeToggle.addEventListener("click", () => {
+        document.body.classList.toggle("dark-mode");
+        // Use the stored instance to redraw the board.
+        if (GameApp.instance) {
+          GameApp.instance.drawBoard();
+          GameApp.instance.drawPieces();
+          
+        }
+      });
+    }
   });
   
-  // Global Sound and TTS helpers:
+
+  // Global Sound and Text-to-Speech helper functions.
   function playSound(soundFile) {
     const audio = new Audio(soundFile);
     audio.play().catch(err => console.error("Error playing sound:", err));
@@ -14,19 +30,17 @@ document.addEventListener("DOMContentLoaded", () => {
     speechSynthesis.speak(utterance);
   }
   
-  // Global helper: Check if point B lies on the straight line between A and C.
+  // Global helper to determine if point B lies on the straight line between A and C.
   function isCollinearAndBetween(A, B, C, tol = 10) {
-    // Calculate the cross product (its absolute value measures deviation from collinearity)
     const cross = Math.abs((B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]));
     if (cross > tol) return false;
-    // Check that B is between A and C by comparing distances.
     const dAB = Math.hypot(B[0] - A[0], B[1] - A[1]);
     const dBC = Math.hypot(C[0] - B[0], C[1] - B[1]);
     const dAC = Math.hypot(C[0] - A[0], C[1] - A[1]);
     return Math.abs(dAB + dBC - dAC) < tol;
   }
   
-  // Helper: Rotate a point (x, y) about center (cx, cy) by angle (radians)
+  // Helper to rotate a point (x, y) about center (cx, cy) by a given angle (radians)
   function rotatePoint(x, y, angle, cx, cy) {
     const tx = x - cx;
     const ty = y - cy;
@@ -36,9 +50,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const ry = tx * sinA + ty * cosA + cy;
     return [rx, ry];
   }
-  
-  // ----------------- InfoModal Class -----------------
-  class InfoModal {
+  // --- Part 2: InfoModal and StartScreen Classes ---
+
+class InfoModal {
     constructor(resetCallback) {
       this.modal = document.getElementById("infoModal");
       this.closeBtn = document.getElementById("closeModal");
@@ -60,6 +74,24 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         this.resetBtn.style.display = "none";
       }
+
+      // Assuming your GameApp instance is stored in GameApp.instance (see previous example)
+      const modalRotationToggle = document.getElementById("modalRotationToggle");
+      if (modalRotationToggle) {
+    // Set the checkbox based on the current game setting
+      modalRotationToggle.checked = GameApp.instance ? GameApp.instance.enableRotation : false;
+    
+      modalRotationToggle.addEventListener("change", (e) => {
+          if (GameApp.instance) {
+          GameApp.instance.enableRotation = e.target.checked;
+          // Optionally, redraw the board to immediately reflect the change.
+          GameApp.instance.drawBoard();
+          // You might also want to update pieces if needed.
+          GameApp.instance.drawPieces();
+          }
+       });
+      }
+
     }
     
     show() {
@@ -67,18 +99,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     hide() {
-      this.modal.style.display = "none";
+        this.modal.style.display = "none";
+        
+        if (GameApp.instance && GameApp.instance.enableRotation) {
+          const game = GameApp.instance;
+          const currentPlayer = game.players[game.currentPlayerIndex];
+          let mapping = {};
+          if (game.totalPlayers === 3) {
+            mapping = { 'B': -Math.PI / 2 + 0.5, 'R': Math.PI / 2 - 0.5, 'T': Math.PI };
+          } else {
+            mapping = { 'T': Math.PI, 'B': 0, 'R': Math.PI / 2, 'L': 3 * Math.PI / 2 };
+          }
+          // Get the target angle for the current player
+          const targetAngle = mapping[currentPlayer.area] || 0;
+          
+          // Instantly set the rotation without animation
+          game.rotationAngle = targetAngle;
+          game.boardRotation = targetAngle;  // Update if you're tracking this separately.
+          
+          // Redraw the board and pieces with the new rotation
+          game.drawBoard();
+          game.drawPieces();
+        }
+      
     }
   }
   
-  // ----------------- StartScreen Class -----------------
   class StartScreen {
     constructor(container, startCallback) {
       this.container = container;
       this.startCallback = startCallback;
-      // Default colors: ensure each player gets a different one.
+      // Default colors to ensure unique selection per player.
       this.defaultColors = ['blue', 'red', 'green', 'orange', 'purple', 'yellow'];
-      // All available colors (in the dropdown)
+      // Allowed colors.
       this.allowedColors = ['blue', 'red', 'green', 'orange', 'purple', 'yellow', 'pink', 'cyan', 'magenta'];
       this.renderInitialScreen();
     }
@@ -86,31 +139,23 @@ document.addEventListener("DOMContentLoaded", () => {
     renderInitialScreen() {
       this.container.innerHTML = `
         <div class="start-screen">
-          <h2>☸ CHAKRA ☸</h2>
-          <label>Total Number of Players (2-4):</label>
-          <select id="totalPlayers">
+          <h2 style="font-size: 28px; font-weight: bold;">☸ CHAKRA ☸</h2>
+          <label style="font-size: 18px;">Total Number of Players (2-4):</label>
+          <select id="totalPlayers" style="font-size: 18px; padding: 8px;">
             <option value="2">2</option>
             <option value="3">3</option>
             <option value="4">4</option>
           </select>
-          <br>
-          <label>Number of Human Players:</label>
-          <select id="humanPlayers">
+          <br><br>
+          <label style="font-size: 18px;">Number of Human Players:</label>
+          <select id="humanPlayers" style="font-size: 18px; padding: 8px;">
             <option value="1">1</option>
             <option value="2">2</option>
             <option value="3">3</option>
             <option value="4">4</option>
           </select>
-          <br>
-          <label>
-            <input type="checkbox" id="enableRotation">
-            Enable Board Rotation
-          </label>
-          <br>
-          <button id="nextBtn" class="btn next-btn">Next</button>
-          <button id="infoBtn" class="btn info-btn" style="font-size: 12px;">☸ Info</button>
-        </div>
-      `;
+          <br><br>
+          <label style="font-size: 18px;">\n          <input type="checkbox" id="enableRotation">\n          Enable Board Rotation\n        </label>\n        <br><br>\n        <button id="nextBtn" class="btn next-btn">Next</button>\n        <button id="infoBtn" class="btn info-btn">☸ Info</button>\n      </div>\n    `;
       document.getElementById("nextBtn").onclick = () => this.renderPlayerDetailsScreen();
       document.getElementById("infoBtn").onclick = () => {
         const infoModal = new InfoModal(null);
@@ -124,19 +169,17 @@ document.addEventListener("DOMContentLoaded", () => {
       this.enableRotation = document.getElementById("enableRotation").checked;
       
       let html = `<div class="player-details">
-        <h2>Enter Player Details</h2>
+        <h2 style="font-size: 28px; font-weight: bold;">Enter Player Details</h2>
         <form id="playerForm">`;
       for (let i = 0; i < totalPlayers; i++) {
-        const type = i < humanPlayers ? "Human" : "Computer";
-        // Use a different default color for each player
+        const type = i < humanPlayers ? "Human*.*" : "Computer";
         const defaultColor = this.defaultColors[i] || this.allowedColors[0];
         html += `
-          <div>
-            <label>Player ${i+1} (${type}) Name:</label>
-            <input type="text" name="playerName${i}" value="Player ${i+1}" required>
-            <label>Color:</label>
-            <select name="playerColor${i}" class="color-select">
-        `;
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 18px;">Player ${i+1} (${type}) :</label>
+            <input type="text" name="playerName${i}" value="Player ${i+1}" required style="font-size: 18px; padding: 6px;">
+            <label style="font-size: 18px;"> :</label>
+            <select name="playerColor${i}" class="color-select" style="font-size: 18px; padding: 6px;">`;
         for (let color of this.allowedColors) {
           html += `<option value="${color}" style="background-color:${color};" ${color === defaultColor ? 'selected' : ''}>${color}</option>`;
         }
@@ -149,7 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
       
       this.container.innerHTML = html;
       
-      // Update color select backgrounds when changed.
+      // Update color select backgrounds on change.
       const selects = this.container.querySelectorAll(".color-select");
       selects.forEach(select => {
         select.addEventListener("change", function() {
@@ -171,10 +214,12 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     }
   }
-  
-  // ----------------- GameApp Class -----------------
-  class GameApp {
+// --- Part 3: GameApp and MainApp Classes with Mobile & Dark Mode Enhancements ---
+
+class GameApp {
+    
     constructor(container, totalPlayers, humanPlayers, playerNames, playerColors, enableRotation, resetCallback) {
+      GameApp.instance = this;
       this.container = container;
       this.totalPlayers = totalPlayers;
       this.humanPlayers = humanPlayers;
@@ -192,6 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
       this.boardState = {};
       this.canvas = null;
       this.ctx = null;
+      this.scoreDisplay = null;
       this.turnLabelDiv = null;
       this.init();
     }
@@ -234,281 +280,130 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     createBoardData() {
-      if (this.totalPlayers === 2) {
-        // 2-player mode board
-        this.nodePositions = {
-          'T1': [220,200], 'T2': [300,200], 'T3': [380,200],
-          'T4': [260,250], 'T5': [300,250], 'T6': [340,250],
-          'B1': [220,400], 'B2': [300,400], 'B3': [380,400],
-          'B4': [260,350], 'B5': [300,350], 'B6': [340,350],
-          'G': [300,300]
-        };
-        // Initialize graph for every node.
-        this.graph = {};
-        for (let node in this.nodePositions) {
-          this.graph[node] = [];
-        }
-        // Top row connections
-        this.graph['T1'].push('T2','T4');
-        this.graph['T2'].push('T1','T3','T5');
-        this.graph['T3'].push('T2','T6');
-        this.graph['T4'].push('T1','T5');
-        this.graph['T5'].push('T2','T4','T6');
-        this.graph['T6'].push('T3','T5');
-        // Bottom row connections
-        this.graph['B1'].push('B2','B4');
-        this.graph['B2'].push('B1','B3','B5');
-        this.graph['B3'].push('B2','B6');
-        this.graph['B4'].push('B1','B5');
-        this.graph['B5'].push('B2','B4','B6');
-        this.graph['B6'].push('B3','B5');
-        // Center connections: connect G to T4, T5, T6 and B4, B5, B6
-        ['T4','T5','T6'].forEach(n => {
-          this.graph[n].push('G');
-          this.graph['G'].push(n);
-        });
-        ['B4','B5','B6'].forEach(n => {
-          this.graph[n].push('G');
-          this.graph['G'].push(n);
-        });
-        // Initialize board state
-        this.boardState = {};
-        for (let node in this.nodePositions) {
-          this.boardState[node] = null;
-        }
-        // Place starting pieces
-        ['T1','T2','T3','T4','T5','T6'].forEach(node => {
-          this.boardState[node] = { player: 0, color: this.players[0].color };
-        });
-        ['B1','B2','B3','B4','B5','B6'].forEach(node => {
-          this.boardState[node] = { player: 1, color: this.players[1].color };
-        });
-        
-      } else if (this.totalPlayers === 3) {
-        // 3-player mode board (using Python reference)
-        const midpoint = (p1, p2) => [ (p1[0]+p2[0])/2, (p1[1]+p2[1])/2 ];
-        this.nodePositions = {
-          'I1': [300,450],
-          'I2': [170,225],
-          'I3': [430,225]
-        };
-        Object.assign(this.nodePositions, {
-          'B7': [ (300+170)/2, (450+225)/2 ],
-          'T7': [ (170+430)/2, (225+225)/2 ],
-          'R7': [ (430+300)/2, (225+450)/2 ]
-        });
-        Object.assign(this.nodePositions, {
-          'T1': [240,121.08],
-          'T2': [300,121.08],
-          'T3': [360,121.08],
-          'T4': [270,173.04],
-          'T6': [330,173.04]
-        });
-        this.nodePositions['T5'] = midpoint(this.nodePositions['T4'], this.nodePositions['T6']);
-        Object.assign(this.nodePositions, {
-          'R1': [485,337.5],
-          'R2': [455,389.46],
-          'R3': [425,441.42],
-          'R4': [425,337.5],
-          'R6': [395,389.46]
-        });
-        this.nodePositions['R5'] = midpoint(this.nodePositions['R4'], this.nodePositions['R6']);
-        Object.assign(this.nodePositions, {
-          'B1': [175,441.42],
-          'B2': [145,389.46],
-          'B3': [115,337.5],
-          'B4': [205,389.46],
-          'B6': [175,337.5]
-        });
-        this.nodePositions['B5'] = midpoint(this.nodePositions['B4'], this.nodePositions['B6']);
-        // Set up graph connections (as per Python code)
-        this.graph = {
-          'I1': ['B7', 'R7'],
-          'I2': ['B7', 'T7'],
-          'I3': ['T7', 'R7'],
-          'B7': ['I1', 'I2', 'B4', 'B5', 'B6'],
-          'T7': ['I2', 'I3', 'T4', 'T5', 'T6'],
-          'R7': ['I3', 'I1', 'R4', 'R5', 'R6'],
-          'T1': ['T2', 'T4'],
-          'T2': ['T1', 'T3', 'T5'],
-          'T3': ['T2', 'T6'],
-          'T4': ['T1', 'T5', 'T7'],
-          'T5': ['T2', 'T4', 'T6', 'T7'],
-          'T6': ['T3', 'T5', 'T7'],
-          'R1': ['R2', 'R4'],
-          'R2': ['R1', 'R3', 'R5'],
-          'R3': ['R2', 'R6'],
-          'R4': ['R1', 'R5', 'R7'],
-          'R5': ['R2', 'R4', 'R6', 'R7'],
-          'R6': ['R3', 'R5', 'R7'],
-          'B1': ['B2', 'B4'],
-          'B2': ['B1', 'B3', 'B5'],
-          'B3': ['B2', 'B6'],
-          'B4': ['B1', 'B5', 'B7'],
-          'B5': ['B2', 'B4', 'B6', 'B7'],
-          'B6': ['B3', 'B5', 'B7']
-        };
-        // Add extra connections between T7, B7, and R7
-        this.graph['T7'].push('B7','R7');
-        this.graph['B7'].push('T7','R7');
-        this.graph['R7'].push('T7','B7');
-        // Initialize board state
-        this.boardState = {};
-        for (let node in this.nodePositions) {
-          this.boardState[node] = null;
-        }
-        const startingPositions = {
-          'T': ['T1','T2','T3','T4','T5','T6','T7'],
-          'R': ['R1','R2','R3','R4','R5','R6','R7'],
-          'B': ['B1','B2','B3','B4','B5','B6','B7']
-        };
-        for (let player of this.players) {
-          let area = player.area;
-          for (let pos of startingPositions[area]) {
-            this.boardState[pos] = { player: player.id, color: player.color };
-          }
-        }
-        
-      } else if (this.totalPlayers === 4) {
-        // 4-player mode board (from Python reference)
-        this.nodePositions = {};
-        this.graph = {};
-        this.boardState = {};
-        // Central nodes I1, I2, I3, I4
-        this.nodePositions['I1'] = [130,130];
-        this.nodePositions['I2'] = [470,130];
-        this.nodePositions['I3'] = [470,470];
-        this.nodePositions['I4'] = [130,470];
-        ['I1','I2','I3','I4'].forEach(label => {
-          this.graph[label] = [];
-        });
-        // Set connections for central nodes
-        this.graph['I1'] = ['T7', 'L7'];
-        this.graph['I2'] = ['T7', 'R7'];
-        this.graph['I3'] = ['R7', 'B7'];
-        this.graph['I4'] = ['B7', 'L7'];
-        this.nodePositions['T7'] = [300,130];
-        this.nodePositions['R7'] = [470,300];
-        this.nodePositions['B7'] = [300,470];
-        this.nodePositions['L7'] = [130,300];
-        ['T7','R7','B7','L7'].forEach(label => {
-          this.graph[label] = [];
-        });
-        this.graph['T7'].push('R7','L7');
-        this.graph['R7'].push('T7','B7');
-        this.graph['B7'].push('R7','L7');
-        this.graph['L7'].push('B7','T7');
-        this.graph['T7'].push('I1','I2');
-        this.graph['I1'].push('T7');
-        this.graph['I2'].push('T7');
-        this.graph['R7'].push('I2','I3');
-        this.graph['I2'].push('R7');
-        this.graph['I3'].push('R7');
-        this.graph['B7'].push('I3','I4');
-        this.graph['I3'].push('B7');
-        this.graph['I4'].push('B7');
-        this.graph['L7'].push('I4','I1');
-        this.graph['I4'].push('L7');
-        this.graph['I1'].push('L7');
-        // Top coordinates
-        let topCoords = {
-          'T1': [220,50], 'T2': [300,50], 'T3': [380,50],
-          'T4': [260,90], 'T5': [300,90], 'T6': [340,90],
-          'T7': this.nodePositions['T7']
-        };
-        let rightCoords = {};
-        for (let label in topCoords) {
-          let pos = topCoords[label];
-          let dx = pos[0] - 300;
-          let dy = pos[1] - 130;
-          let new_x = 470 - dy;
-          let new_y = 300 + dx;
-          rightCoords[label.replace('T','R')] = [new_x, new_y];
-        }
-        let bottomCoords = {};
-        for (let label in topCoords) {
-          let pos = topCoords[label];
-          let dx = pos[0] - 300;
-          let dy = pos[1] - 130;
-          let new_x = 300 - dx;
-          let new_y = 470 - dy;
-          bottomCoords[label.replace('T','B')] = [new_x, new_y];
-        }
-        let leftCoords = {};
-        for (let label in topCoords) {
-          let pos = topCoords[label];
-          let dx = pos[0] - 300;
-          let dy = pos[1] - 130;
-          let new_x = 130 + dy;
-          let new_y = 300 - dx;
-          leftCoords[label.replace('T','L')] = [new_x, new_y];
-        }
-        // Incorporate area nodes and add area edges.
-        for (let [area, coords] of [['T', topCoords], ['R', rightCoords], ['B', bottomCoords], ['L', leftCoords]]) {
-          for (let label in coords) {
-            this.nodePositions[label] = coords[label];
-            if (!this.graph[label]) this.graph[label] = [];
-          }
-          const addAreaEdges = (prefix) => {
-            for (let i = 1; i <= 7; i++) {
-              let key = prefix + i;
-              if (!this.graph[key]) this.graph[key] = [];
-            }
-            this.graph[prefix+'1'].push(prefix+'2');
-            this.graph[prefix+'2'].push(prefix+'1', prefix+'3');
-            this.graph[prefix+'3'].push(prefix+'2');
-            this.graph[prefix+'1'].push(prefix+'4');
-            this.graph[prefix+'4'].push(prefix+'1');
-            this.graph[prefix+'2'].push(prefix+'5');
-            this.graph[prefix+'5'].push(prefix+'2');
-            this.graph[prefix+'3'].push(prefix+'6');
-            this.graph[prefix+'6'].push(prefix+'3');
-            this.graph[prefix+'4'].push(prefix+'5');
-            this.graph[prefix+'5'].push(prefix+'4', prefix+'6');
-            this.graph[prefix+'6'].push(prefix+'5');
-            this.graph[prefix+'4'].push(prefix+'7');
-            this.graph[prefix+'7'].push(prefix+'4');
-            this.graph[prefix+'5'].push(prefix+'7');
-            this.graph[prefix+'7'].push(prefix+'5');
-            this.graph[prefix+'6'].push(prefix+'7');
-            this.graph[prefix+'7'].push(prefix+'6');
+        const initGraph = () => { this.graph = {}; Object.keys(this.nodePositions).forEach(n => this.graph[n] = []); },
+              initBoardState = () => { this.boardState = {}; Object.keys(this.nodePositions).forEach(n => this.boardState[n] = null); },
+              addConn = (a, b) => { this.graph[a].push(b); this.graph[b].push(a); };
+      
+        if(this.totalPlayers === 2) {
+          this.nodePositions = {
+            T1: [220,200], T2: [300,200], T3: [380,200],
+            T4: [260,250], T5: [300,250], T6: [340,250],
+            B1: [220,400], B2: [300,400], B3: [380,400],
+            B4: [260,350], B5: [300,350], B6: [340,350],
+            G:  [300,300]
           };
-          ['T','R','B','L'].forEach(a => addAreaEdges(a));
-        }
-        for (let node in this.nodePositions) {
-          this.boardState[node] = null;
-        }
-        const startingPositions = {
-          'T': ['T1','T2','T3','T4','T5','T6','T7'],
-          'R': ['R1','R2','R3','R4','R5','R6','R7'],
-          'B': ['B1','B2','B3','B4','B5','B6','B7'],
-          'L': ['L1','L2','L3','L4','L5','L6','L7']
-        };
-        for (let player of this.players) {
-          let area = player.area;
-          for (let pos of startingPositions[area]) {
-            this.boardState[pos] = { player: player.id, color: player.color };
-          }
+          initGraph();
+          [['T1','T2'], ['T1','T4'], ['T2','T3'], ['T2','T5'], ['T3','T6'], ['T4','T5'], ['T5','T6']]
+            .forEach(pair => addConn(pair[0], pair[1]));
+          [['B1','B2'], ['B1','B4'], ['B2','B3'], ['B2','B5'], ['B3','B6'], ['B4','B5'], ['B5','B6']]
+            .forEach(pair => addConn(pair[0], pair[1]));
+          ['T4','T5','T6','B4','B5','B6'].forEach(n => addConn(n, 'G'));
+          initBoardState();
+          ['T1','T2','T3','T4','T5','T6'].forEach(n => this.boardState[n] = { player: 0, color: this.players[0].color });
+          ['B1','B2','B3','B4','B5','B6'].forEach(n => this.boardState[n] = { player: 1, color: this.players[1].color });
+          
+        } else if(this.totalPlayers === 3) {
+          const mid = (p1, p2) => [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2];
+          this.nodePositions = {
+            I1: [300,450], I2: [170,225], I3: [430,225],
+            B7: [(300+170)/2, (450+225)/2],
+            T7: [(170+430)/2, (225+225)/2],
+            R7: [(430+300)/2, (225+450)/2],
+            T1: [240,121.08], T2: [300,121.08], T3: [360,121.08],
+            T4: [270,173.04], T6: [330,173.04],
+            R1: [485,337.5], R2: [455,389.46], R3: [425,441.42],
+            R4: [425,337.5], R6: [395,389.46],
+            B1: [175,441.42], B2: [145,389.46], B3: [115,337.5],
+            B4: [205,389.46], B6: [175,337.5]
+          };
+          this.nodePositions.T5 = mid(this.nodePositions.T4, this.nodePositions.T6);
+          this.nodePositions.R5 = mid(this.nodePositions.R4, this.nodePositions.R6);
+          this.nodePositions.B5 = mid(this.nodePositions.B4, this.nodePositions.B6);
+          this.graph = {
+            I1: ['B7','R7'], I2: ['B7','T7'], I3: ['T7','R7'],
+            B7: ['I1','I2','B4','B5','B6'], T7: ['I2','I3','T4','T5','T6'],
+            R7: ['I3','I1','R4','R5','R6'],
+            T1: ['T2','T4'], T2: ['T1','T3','T5'], T3: ['T2','T6'],
+            T4: ['T1','T5','T7'], T5: ['T2','T4','T6','T7'], T6: ['T3','T5','T7'],
+            R1: ['R2','R4'], R2: ['R1','R3','R5'], R3: ['R2','R6'],
+            R4: ['R1','R5','R7'], R5: ['R2','R4','R6','R7'], R6: ['R3','R5','R7'],
+            B1: ['B2','B4'], B2: ['B1','B3','B5'], B3: ['B2','B6'],
+            B4: ['B1','B5','B7'], B5: ['B2','B4','B6','B7'], B6: ['B3','B5','B7']
+          };
+          addConn('T7','B7'); addConn('T7','R7'); addConn('B7','R7');
+          initBoardState();
+          const starts = { T: ['T1','T2','T3','T4','T5','T6','T7'],
+                           R: ['R1','R2','R3','R4','R5','R6','R7'],
+                           B: ['B1','B2','B3','B4','B5','B6','B7'] };
+          this.players.forEach(p => starts[p.area].forEach(n => this.boardState[n] = { player: p.id, color: p.color }));
+          
+        } else if(this.totalPlayers === 4) {
+          this.nodePositions = Object.assign({}, {
+            I1: [130,130], I2: [470,130], I3: [470,470], I4: [130,470],
+            T7: [300,130], R7: [470,300], B7: [300,470], L7: [130,300]
+          });
+          Object.keys(this.nodePositions).forEach(n => this.graph[n] = []);
+          addConn('I1','T7'); addConn('I1','L7');
+          addConn('I2','T7'); addConn('I2','R7');
+          addConn('I3','R7'); addConn('I3','B7');
+          addConn('I4','B7'); addConn('I4','L7');
+          addConn('T7','R7'); addConn('R7','B7'); addConn('B7','L7'); addConn('L7','T7');
+          const topCoords = { T1: [220,50], T2: [300,50], T3: [380,50], T4: [260,90], T5: [300,90], T6: [340,90], T7: this.nodePositions.T7 },
+                transform = (coords, prefix, fn) => {
+                  const res = {}; for(let label in coords) res[label.replace('T', prefix)] = fn(coords[label]);
+                  return res;
+                },
+                toRight = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [470-dy,300+dx]; },
+                toBottom = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [300-dx,470-dy]; },
+                toLeft = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [130+dy,300-dx]; },
+                rightCoords = transform(topCoords, 'R', toRight),
+                bottomCoords = transform(topCoords, 'B', toBottom),
+                leftCoords = transform(topCoords, 'L', toLeft);
+          [topCoords, rightCoords, bottomCoords, leftCoords].forEach(area => {
+            Object.entries(area).forEach(([n, pos]) => { this.nodePositions[n] = pos; this.graph[n] = this.graph[n] || []; });
+          });
+          const addAreaEdges = prefix => {
+            for(let i = 1; i <= 7; i++) this.graph[prefix+i] = this.graph[prefix+i] || [];
+            [['1','2'], ['2','3'], ['1','4'], ['2','5'], ['3','6'], ['4','5'], ['5','6'], ['4','7'], ['5','7'], ['6','7']]
+              .forEach(pair => addConn(prefix+pair[0], prefix+pair[1]));
+          };
+          ['T','R','B','L'].forEach(addAreaEdges);
+          initBoardState();
+          const starts = { T: ['T1','T2','T3','T4','T5','T6','T7'],
+                           R: ['R1','R2','R3','R4','R5','R6','R7'],
+                           B: ['B1','B2','B3','B4','B5','B6','B7'],
+                           L: ['L1','L2','L3','L4','L5','L6','L7'] };
+          this.players.forEach(p => starts[p.area].forEach(n => this.boardState[n] = { player: p.id, color: p.color }));
         }
       }
-    }
+      
     
     renderGameUI() {
-      this.container.innerHTML = `
-        <div id="scoreDisplay"></div>
-        <canvas id="gameCanvas" width="600" height="600"></canvas>
-        <div id="gameControls">
-          <button id="infoButton" class="btn info-btn">☸ Info</button>
-          <button id="resetButton" class="btn reset-btn">Reset</button>
-        </div>
-        <div id="turnLabel"></div>
-      `;
+        const scoreFontSize = (this.totalPlayers === 4) ? "16px" : "20px";
+        this.container.innerHTML = `
+          <div id="scoreDisplay" style="font-size: ${scoreFontSize}; margin-bottom: 10px;"></div>
+          <canvas id="gameCanvas" width="600" height="600"></canvas>
+          <div id="gameControls" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;"> 
+            <button id="infoButton" class="btn info-btn">☸ Info</button>
+            <button id="resetButton" class="btn reset-btn">Reset</button>
+            <div id="turnLabel" style="font-size: 28px; font-weight: bold; margin-left: 30px;"></div>
+          </div>
+        `;
+      
+
       this.canvas = document.getElementById("gameCanvas");
       this.ctx = this.canvas.getContext("2d");
       this.scoreDisplay = document.getElementById("scoreDisplay");
       this.turnLabelDiv = document.getElementById("turnLabel");
       
+      // Support both click and touch events for mobile.
       this.canvas.addEventListener("click", (e) => this.onCanvasClick(e));
+      this.canvas.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        this.onCanvasClick({ clientX: touch.clientX, clientY: touch.clientY, target: e.target });
+      });
+      
       document.getElementById("infoButton").onclick = () => {
         const infoModal = new InfoModal(() => this.resetGame());
         infoModal.show();
@@ -523,15 +418,21 @@ document.addEventListener("DOMContentLoaded", () => {
         this.resetCallback();
       }
     }
-    
+
+
     updateScoreDisplay() {
-      let scoreText = "Scores: ";
-      this.players.forEach(p => {
-        scoreText += `${p.name}(${p.color}): ${p.score}  `;
-      });
-      this.scoreDisplay.textContent = scoreText;
-    }
-    
+        // Choose a smaller font size if there are 4 players.
+        const fontSize = (this.players.length === 4) ? "18px" : "22px";
+        
+        let scoreHTML = `<strong style="font-size: ${fontSize};">Scores:</strong> `;
+        this.players.forEach(p => {
+          scoreHTML += `<span style="color: ${p.color}; margin-right: 10px; font-size: ${fontSize};">
+                          ${p.name}: ${p.score}
+                        </span>`;
+        });
+        this.scoreDisplay.innerHTML = scoreHTML;
+      }
+      
     getRotatedPosition(node) {
       let pos = this.nodePositions[node];
       if (!this.enableRotation) return pos;
@@ -539,9 +440,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     drawBoard() {
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      const darkModeActive = document.body.classList.contains("dark-mode");
+      // Clear canvas and set background based on dark mode.
+      if (darkModeActive) {
+        this.ctx.fillStyle = "#333";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.strokeStyle = "#fff";
+      } else {
+        this.ctx.fillStyle = "#fff";
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.strokeStyle = "black";
+      }
+      
       this.ctx.lineWidth = 2;
-      this.ctx.strokeStyle = "black";
       let drawn = new Set();
       for (let node in this.graph) {
         this.graph[node].forEach(neighbor => {
@@ -560,17 +471,19 @@ document.addEventListener("DOMContentLoaded", () => {
         let pos = this.getRotatedPosition(node);
         this.ctx.beginPath();
         this.ctx.arc(pos[0], pos[1], 5, 0, 2 * Math.PI);
-        this.ctx.fillStyle = "white";
+        this.ctx.fillStyle = darkModeActive ? "#555" : "white";
         this.ctx.fill();
-        this.ctx.strokeStyle = "black";
+        this.ctx.strokeStyle = darkModeActive ? "#fff" : "black";
         this.ctx.stroke();
-        this.ctx.fillStyle = "gray";
-        this.ctx.font = "10px Arial";
-        this.ctx.fillText(node, pos[0] - 10, pos[1] - 10);
+        // Draw node labels with increased font size for accessibility.
+        this.ctx.fillStyle = darkModeActive ? "#fff" : "gray";
+        this.ctx.font = "14px Arial";
+        this.ctx.fillText(node, pos[0] - 12, pos[1] - 12);
       }
     }
     
     drawPieces() {
+      const darkModeActive = document.body.classList.contains("dark-mode");
       for (let node in this.boardState) {
         if (this.boardState[node]) {
           let pos = this.getRotatedPosition(node);
@@ -578,7 +491,7 @@ document.addEventListener("DOMContentLoaded", () => {
           this.ctx.arc(pos[0], pos[1], 12, 0, 2 * Math.PI);
           this.ctx.fillStyle = this.boardState[node].color;
           this.ctx.fill();
-          this.ctx.strokeStyle = "black";
+          this.ctx.strokeStyle = darkModeActive ? "#fff" : "black";
           this.ctx.lineWidth = 2;
           this.ctx.stroke();
           if (this.selectedNode === node) {
@@ -643,18 +556,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     
-    // Updated jump move validation using isCollinearAndBetween:
     validJumpMove(source, dest) {
       if (!this.boardState[source] || this.boardState[dest] !== null) return null;
       const A = this.nodePositions[source];
       const C = this.nodePositions[dest];
-  
       for (let mid of this.graph[source]) {
         if (!this.graph[mid].includes(dest)) continue;
         const B = this.nodePositions[mid];
         if (!isCollinearAndBetween(A, B, C)) continue;
-        if (!this.boardState[mid] || this.boardState[mid].player === this.boardState[source].player)
-          continue;
+        if (!this.boardState[mid] || this.boardState[mid].player === this.boardState[source].player) continue;
         return mid;
       }
       return null;
@@ -704,7 +614,6 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => this.advanceTurn(), 1500);
     }
     
-    // New helper: Animate the board rotation to newAngle over a given duration.
     animateRotation(newAngle, duration = 1000) {
       const startAngle = this.rotationAngle;
       const startTime = performance.now();
@@ -714,56 +623,58 @@ document.addEventListener("DOMContentLoaded", () => {
         this.rotationAngle = startAngle + (newAngle - startAngle) * fraction;
         this.drawBoard();
         this.drawPieces();
-        if (fraction < 1) {
-          requestAnimationFrame(animate);
-        }
+        if (fraction < 1) requestAnimationFrame(animate);
       };
       requestAnimationFrame(animate);
     }
     
     nextTurn() {
-      const currentPlayer = this.players[this.currentPlayerIndex];
-      let newAngle = 0;
-      if (this.enableRotation) {
-        if (this.totalPlayers === 3) {
-          const mapping = { 
-            'B': -Math.PI / 2,  // Bottom
-            'R': Math.PI / 2, // Right
-            'T': Math.PI       // Top
-        };
-          newAngle = mapping[currentPlayer.area] || 0;
+        const currentPlayer = this.players[this.currentPlayerIndex];
+        let newAngle = 0;
+        if (this.enableRotation) {
+          let mapping = {};
+          if (this.totalPlayers === 3) {
+            mapping = { 'B': -Math.PI / 2 + 0.52, 'R': Math.PI / 2 - 0.52, 'T': Math.PI };
+          } else {
+            mapping = { 'T': Math.PI, 'B': 0, 'R': Math.PI / 2, 'L': 3 * Math.PI / 2 };
+          }
+          const targetAngle = mapping[currentPlayer.area] || 0;
+          const currentRotation = this.boardRotation || 0;
+          // Calculate the minimal angle difference in the range (-π, π]
+          let delta = targetAngle - currentRotation;
+          delta = ((delta + Math.PI) % (2 * Math.PI)) - Math.PI;
+          newAngle = currentRotation + delta;
+          this.animateRotation(newAngle);
+          this.boardRotation = newAngle;
         } else {
-          const mapping = { 'T': Math.PI, 'B': 0, 'R': Math.PI / 2, 'L': 3 * Math.PI / 2 };
-          newAngle = mapping[currentPlayer.area] || 0;
+          this.rotationAngle = 0;
         }
-        this.animateRotation(newAngle);
-      } else {
-        this.rotationAngle = 0;
-      }
-      this.drawBoard();
-      this.drawPieces();
-      this.showTurnLabel(currentPlayer);
-      // Announce the current turn via TTS
-      speakText(`${currentPlayer.name}'s turn`);
+        this.drawBoard();
+        this.drawPieces();
+        this.showTurnLabel(currentPlayer);
+        speakText(`${currentPlayer.name}'s turn`);
       
-      if (currentPlayer.type === "human") {
-        if (!this.selectedNode) {
-          for (let node in this.boardState) {
-            if (this.boardState[node] && this.boardState[node].player === currentPlayer.id) {
-              this.selectedNode = node;
-              this.highlightValidMoves(node);
-              break;
+        if (currentPlayer.type === "human") {
+          if (!this.selectedNode) {
+            for (let node in this.boardState) {
+              if (this.boardState[node] && this.boardState[node].player === currentPlayer.id) {
+                this.selectedNode = node;
+                this.highlightValidMoves(node);
+                break;
+              }
             }
           }
+        } else {
+          this.makeComputerMove(currentPlayer);
         }
-      } else {
-        this.makeComputerMove(currentPlayer);
       }
-    }
+      
     
     showTurnLabel(player) {
-      this.turnLabelDiv.textContent = `${player.name}'s turn`;
+    this.turnLabelDiv.textContent = `${player.name}'s turn`;
+    this.turnLabelDiv.style.color = player.color; // Assuming player.color holds a valid CSS color
     }
+    
     
     advanceTurn() {
       if (this.gameOver) return;
@@ -782,9 +693,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const move = moves[Math.floor(Math.random() * moves.length)];
       const [source, dest, isJump, jumpedNode] = move;
-      setTimeout(() => {
-        this.movePiece(source, dest, isJump, jumpedNode);
-      }, 500);
+      setTimeout(() => this.movePiece(source, dest, isJump, jumpedNode), 500);
     }
     
     getValidMoves(node) {
@@ -834,7 +743,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   
-  // ----------------- MainApp Class -----------------
   class MainApp {
     constructor(container) {
       this.container = container;
@@ -855,3 +763,4 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   }
+  
