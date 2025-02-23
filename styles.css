@@ -4,53 +4,61 @@ body {
     background: #f0f0f0;
     margin: 0;
     padding: 0;
-  }
-  
- /* Dark mode body (to be toggled via JS) */
+}
+
+/* Dark mode body (to be toggled via JS) */
 body.dark-mode {
-  background: #121212;
-  color: #f0f0f0;
+    background: #121212;
+    color: #f0f0f0;
 }
 
 /* Dark mode adjustments for the game container */
 body.dark-mode #app {
-  background: #1e1e1e;
-  border: 1px solid #444;
-  box-shadow: 0 0 5px rgba(255,255,255,0.1);
+    background: #1e1e1e;
+    border: 1px solid #444;
+    box-shadow: 0 0 5px rgba(255,255,255,0.1);
 }
 
 /* Dark mode adjustments for modal content */
 body.dark-mode .modal-content {
-  background-color: #1e1e1e;
-  border: 1px solid #444;
-  color: #f0f0f0;
+    background-color: #1e1e1e;
+    border: 1px solid #444;
+    color: #f0f0f0;
 }
 
 /* Dark mode adjustments for modal close button */
 body.dark-mode .close {
-  color: #ccc;
+    color: #ccc;
 }
 
-  
-  /* Wrapper positions the game container to the right */
-  /* Wrapper positions the game container to the left */
+/* Wrapper positions the game container to the left */
 #app-wrapper {
     display: flex;
     justify-content: flex-start; /* Changed from flex-end to flex-start */
     padding: 20px;
-  }
-  
-  /* Game container taking up 50% width */
-  #app {
+}
+
+/* Game container taking up 50% width */
+#app {
     width: 68%;
     padding: 20px;
     background: #fff;
     border: 1px solid #ddd;
     box-shadow: 0 0 5px rgba(0,0,0,0.1);
-  }
-  
-  /* Button styling (increased padding and font size for better visibility) */
-  .btn {
+}
+
+/* Score display scaling */
+#scoreDisplay {
+    font-size: 20px;
+}
+
+/* Adjust font size dynamically for 4-player mode */
+body.four-players #scoreDisplay {
+    font-size: 16px; /* Smaller font for 4 players */
+}
+
+/* Button styling */
+.btn {
     border: none;
     border-radius: 4px;
     padding: 12px 24px;
@@ -58,33 +66,38 @@ body.dark-mode .close {
     font-size: 18px;
     font-weight: bold;
     cursor: pointer;
-  }
-  
-  .next-btn {
+}
+
+.next-btn {
     background-color: #4CAF50;
     color: white;
-  }
-  
-  .info-btn {
+}
+
+.info-btn {
     background-color: #2196F3;
     color: white;
-  }
-  
-  .reset-btn {
+}
+
+.reset-btn {
     background-color: #f44336;
     color: white;
-  }
-  
-  /* Canvas styling */
-  canvas {
+}
+
+/* Canvas Styling (Dynamic Scaling) */
+canvas {
     border: 1px solid #000;
     background: #fff;
     display: block;
     margin: 10px 0;
-  }
-  
-  /* Modal styling */
-  .modal {
+    width: 100%;  /* Automatically scale down */
+    height: auto; /* Maintain aspect ratio */
+    max-width: 400px;  
+    max-height: 400px;
+    image-rendering: crisp-edges;
+}
+
+/* Modal styling */
+.modal {
     display: none; 
     position: fixed; 
     z-index: 1000; 
@@ -94,20 +107,23 @@ body.dark-mode .close {
     height: 100%; 
     overflow: auto;
     background-color: rgba(0,0,0,0.5);
-  }
-  
-  .modal-content {
+}
+
+/* Dynamic modal resizing */
+.modal-content {
     background-color: #fefefe;
     margin: 5% auto; 
     padding: 20px;
     border: 1px solid #888;
-    width: 600px; 
+    width: 80%;  /* Dynamic width */
+    max-width: 400px; /* Prevent it from being too large */
     max-height: 80%;
     overflow-y: auto;
     position: relative;
-  }
-  
-  .close {
+}
+
+/* Close button for modal */
+.close {
     color: #aaa;
     position: absolute;
     right: 10px;
@@ -115,23 +131,27 @@ body.dark-mode .close {
     font-size: 24px;
     font-weight: bold;
     cursor: pointer;
-  }
-  
-  /* Responsive adjustments for mobile devices */
-  @media (max-width: 600px) {
+}
+
+/* Responsive adjustments for mobile devices */
+@media (max-width: 600px) {
     #app-wrapper {
-      justify-content: center;
-      padding: 10px;
+        justify-content: center;
+        padding: 10px;
     }
     
     #app {
-      width: 90%;
-      padding: 10px;
+        width: 90%;
+        padding: 10px;
     }
-    
+
     .modal-content {
-      width: 90%;
-      max-width: 400px;
+        width: 90%;
+        max-width: 350px;
+        padding: 15px;
     }
-  }
-  
+
+    #scoreDisplay {
+        font-size: 16px; /* Adjust for small screens */
+    }
+}
