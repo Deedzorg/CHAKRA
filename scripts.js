@@ -293,105 +293,151 @@ class GameApp {
         });
       }
     }
-    
+
     createBoardData() {
-        const initGraph = () => { this.graph = {}; Object.keys(this.nodePositions).forEach(n => this.graph[n] = []); },
-              initBoardState = () => { this.boardState = {}; Object.keys(this.nodePositions).forEach(n => this.boardState[n] = null); },
-              addConn = (a, b) => { this.graph[a].push(b); this.graph[b].push(a); };
-      
-        if(this.totalPlayers === 2) {
-          this.nodePositions = {
-            T1: [220,200], T2: [300,200], T3: [380,200],
-            T4: [260,250], T5: [300,250], T6: [340,250],
-            B1: [220,400], B2: [300,400], B3: [380,400],
-            B4: [260,350], B5: [300,350], B6: [340,350],
-            G:  [300,300]
-          };
-          initGraph();
-          [['T1','T2'], ['T1','T4'], ['T2','T3'], ['T2','T5'], ['T3','T6'], ['T4','T5'], ['T5','T6']]
-            .forEach(pair => addConn(pair[0], pair[1]));
-          [['B1','B2'], ['B1','B4'], ['B2','B3'], ['B2','B5'], ['B3','B6'], ['B4','B5'], ['B5','B6']]
-            .forEach(pair => addConn(pair[0], pair[1]));
-          ['T4','T5','T6','B4','B5','B6'].forEach(n => addConn(n, 'G'));
-          initBoardState();
-          ['T1','T2','T3','T4','T5','T6'].forEach(n => this.boardState[n] = { player: 0, color: this.players[0].color });
-          ['B1','B2','B3','B4','B5','B6'].forEach(n => this.boardState[n] = { player: 1, color: this.players[1].color });
-          
-        } else if(this.totalPlayers === 3) {
-          const mid = (p1, p2) => [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2];
-          this.nodePositions = {
-            I1: [300,450], I2: [170,225], I3: [430,225],
-            B7: [(300+170)/2, (450+225)/2],
-            T7: [(170+430)/2, (225+225)/2],
-            R7: [(430+300)/2, (225+450)/2],
-            T1: [240,121.08], T2: [300,121.08], T3: [360,121.08],
-            T4: [270,173.04], T6: [330,173.04],
-            R1: [485,337.5], R2: [455,389.46], R3: [425,441.42],
-            R4: [425,337.5], R6: [395,389.46],
-            B1: [175,441.42], B2: [145,389.46], B3: [115,337.5],
-            B4: [205,389.46], B6: [175,337.5]
-          };
-          this.nodePositions.T5 = mid(this.nodePositions.T4, this.nodePositions.T6);
-          this.nodePositions.R5 = mid(this.nodePositions.R4, this.nodePositions.R6);
-          this.nodePositions.B5 = mid(this.nodePositions.B4, this.nodePositions.B6);
-          this.graph = {
-            I1: ['B7','R7'], I2: ['B7','T7'], I3: ['T7','R7'],
-            B7: ['I1','I2','B4','B5','B6'], T7: ['I2','I3','T4','T5','T6'],
-            R7: ['I3','I1','R4','R5','R6'],
-            T1: ['T2','T4'], T2: ['T1','T3','T5'], T3: ['T2','T6'],
-            T4: ['T1','T5','T7'], T5: ['T2','T4','T6','T7'], T6: ['T3','T5','T7'],
-            R1: ['R2','R4'], R2: ['R1','R3','R5'], R3: ['R2','R6'],
-            R4: ['R1','R5','R7'], R5: ['R2','R4','R6','R7'], R6: ['R3','R5','R7'],
-            B1: ['B2','B4'], B2: ['B1','B3','B5'], B3: ['B2','B6'],
-            B4: ['B1','B5','B7'], B5: ['B2','B4','B6','B7'], B6: ['B3','B5','B7']
-          };
-          addConn('T7','B7'); addConn('T7','R7'); addConn('B7','R7');
-          initBoardState();
-          const starts = { T: ['T1','T2','T3','T4','T5','T6','T7'],
-                           R: ['R1','R2','R3','R4','R5','R6','R7'],
-                           B: ['B1','B2','B3','B4','B5','B6','B7'] };
-          this.players.forEach(p => starts[p.area].forEach(n => this.boardState[n] = { player: p.id, color: p.color }));
-          
-        } else if(this.totalPlayers === 4) {
-          this.nodePositions = Object.assign({}, {
-            I1: [130,130], I2: [470,130], I3: [470,470], I4: [130,470],
-            T7: [300,130], R7: [470,300], B7: [300,470], L7: [130,300]
+      // Helper functions.
+      const initGraph = () => { 
+        this.graph = {}; 
+        Object.keys(this.nodePositions).forEach(n => this.graph[n] = []); 
+      };
+      const initBoardState = () => { 
+        this.boardState = {}; 
+        Object.keys(this.nodePositions).forEach(n => this.boardState[n] = null); 
+      };
+      const addConn = (a, b) => { 
+        this.graph[a].push(b); 
+        this.graph[b].push(a); 
+      };
+    
+      // Scaling helper to enlarge board positions.
+      const applyScale = (scaleFactor) => {
+        const centerX = 300, centerY = 300;
+        Object.keys(this.nodePositions).forEach(key => {
+          const [x, y] = this.nodePositions[key];
+          this.nodePositions[key] = [
+            centerX + (x - centerX) * scaleFactor,
+            centerY + (y - centerY) * scaleFactor,
+          ];
+        });
+      };
+    
+      if(this.totalPlayers === 2) {
+        this.nodePositions = {
+          T1: [220,200], T2: [300,200], T3: [380,200],
+          T4: [260,250], T5: [300,250], T6: [340,250],
+          B1: [220,400], B2: [300,400], B3: [380,400],
+          B4: [260,350], B5: [300,350], B6: [340,350],
+          G:  [300,300]
+        };
+        // Enlarge board for 2-player mode.
+        applyScale(2.0);
+        
+        initGraph();
+        [['T1','T2'], ['T1','T4'], ['T2','T3'], ['T2','T5'], ['T3','T6'], ['T4','T5'], ['T5','T6']]
+          .forEach(pair => addConn(pair[0], pair[1]));
+        [['B1','B2'], ['B1','B4'], ['B2','B3'], ['B2','B5'], ['B3','B6'], ['B4','B5'], ['B5','B6']]
+          .forEach(pair => addConn(pair[0], pair[1]));
+        ['T4','T5','T6','B4','B5','B6'].forEach(n => addConn(n, 'G'));
+        initBoardState();
+        ['T1','T2','T3','T4','T5','T6'].forEach(n => 
+          this.boardState[n] = { player: 0, color: this.players[0].color }
+        );
+        ['B1','B2','B3','B4','B5','B6'].forEach(n => 
+          this.boardState[n] = { player: 1, color: this.players[1].color }
+        );
+    
+      } else if(this.totalPlayers === 3) {
+        const mid = (p1, p2) => [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2];
+        this.nodePositions = {
+          I1: [300,450], I2: [170,225], I3: [430,225],
+          B7: [(300+170)/2, (450+225)/2],
+          T7: [(170+430)/2, (225+225)/2],
+          R7: [(430+300)/2, (225+450)/2],
+          T1: [240,121.08], T2: [300,121.08], T3: [360,121.08],
+          T4: [270,173.04], T6: [330,173.04],
+          R1: [485,337.5], R2: [455,389.46], R3: [425,441.42],
+          R4: [425,337.5], R6: [395,389.46],
+          B1: [175,441.42], B2: [145,389.46], B3: [115,337.5],
+          B4: [205,389.46], B6: [175,337.5]
+        };
+        this.nodePositions.T5 = mid(this.nodePositions.T4, this.nodePositions.T6);
+        this.nodePositions.R5 = mid(this.nodePositions.R4, this.nodePositions.R6);
+        this.nodePositions.B5 = mid(this.nodePositions.B4, this.nodePositions.B6);
+        // Enlarge board for 3-player mode.
+        applyScale(1.4);
+        
+        this.graph = {
+          I1: ['B7','R7'], I2: ['B7','T7'], I3: ['T7','R7'],
+          B7: ['I1','I2','B4','B5','B6'], T7: ['I2','I3','T4','T5','T6'],
+          R7: ['I3','I1','R4','R5','R6'],
+          T1: ['T2','T4'], T2: ['T1','T3','T5'], T3: ['T2','T6'],
+          T4: ['T1','T5','T7'], T5: ['T2','T4','T6','T7'], T6: ['T3','T5','T7'],
+          R1: ['R2','R4'], R2: ['R1','R3','R5'], R3: ['R2','R6'],
+          R4: ['R1','R5','R7'], R5: ['R2','R4','R6','R7'], R6: ['R3','R5','R7'],
+          B1: ['B2','B4'], B2: ['B1','B3','B5'], B3: ['B2','B6'],
+          B4: ['B1','B5','B7'], B5: ['B2','B4','B6','B7'], B6: ['B3','B5','B7']
+        };
+        addConn('T7','B7'); addConn('T7','R7'); addConn('B7','R7');
+        initBoardState();
+        const starts = { 
+          T: ['T1','T2','T3','T4','T5','T6','T7'],
+          R: ['R1','R2','R3','R4','R5','R6','R7'],
+          B: ['B1','B2','B3','B4','B5','B6','B7']
+        };
+        this.players.forEach(p => 
+          starts[p.area].forEach(n => this.boardState[n] = { player: p.id, color: p.color })
+        );
+    
+      } else if(this.totalPlayers === 4) {
+        this.nodePositions = Object.assign({}, {
+          I1: [130,130], I2: [470,130], I3: [470,470], I4: [130,470],
+          T7: [300,130], R7: [470,300], B7: [300,470], L7: [130,300]
+        });
+        Object.keys(this.nodePositions).forEach(n => this.graph[n] = []);
+        addConn('I1','T7'); addConn('I1','L7');
+        addConn('I2','T7'); addConn('I2','R7');
+        addConn('I3','R7'); addConn('I3','B7');
+        addConn('I4','B7'); addConn('I4','L7');
+        addConn('T7','R7'); addConn('R7','B7'); addConn('B7','L7'); addConn('L7','T7');
+        const topCoords = { 
+                T1: [220,50], T2: [300,50], T3: [380,50], 
+                T4: [260,90], T5: [300,90], T6: [340,90], T7: this.nodePositions.T7 
+              },
+              transform = (coords, prefix, fn) => {
+                const res = {}; 
+                for(let label in coords) res[label.replace('T', prefix)] = fn(coords[label]);
+                return res;
+              },
+              toRight = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [470-dy,300+dx]; },
+              toBottom = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [300-dx,470-dy]; },
+              toLeft = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [130+dy,300-dx]; },
+              rightCoords = transform(topCoords, 'R', toRight),
+              bottomCoords = transform(topCoords, 'B', toBottom),
+              leftCoords = transform(topCoords, 'L', toLeft);
+        [topCoords, rightCoords, bottomCoords, leftCoords].forEach(area => {
+          Object.entries(area).forEach(([n, pos]) => { 
+            this.nodePositions[n] = pos; 
+            this.graph[n] = this.graph[n] || []; 
           });
-          Object.keys(this.nodePositions).forEach(n => this.graph[n] = []);
-          addConn('I1','T7'); addConn('I1','L7');
-          addConn('I2','T7'); addConn('I2','R7');
-          addConn('I3','R7'); addConn('I3','B7');
-          addConn('I4','B7'); addConn('I4','L7');
-          addConn('T7','R7'); addConn('R7','B7'); addConn('B7','L7'); addConn('L7','T7');
-          const topCoords = { T1: [220,50], T2: [300,50], T3: [380,50], T4: [260,90], T5: [300,90], T6: [340,90], T7: this.nodePositions.T7 },
-                transform = (coords, prefix, fn) => {
-                  const res = {}; for(let label in coords) res[label.replace('T', prefix)] = fn(coords[label]);
-                  return res;
-                },
-                toRight = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [470-dy,300+dx]; },
-                toBottom = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [300-dx,470-dy]; },
-                toLeft = pos => { let dx = pos[0]-300, dy = pos[1]-130; return [130+dy,300-dx]; },
-                rightCoords = transform(topCoords, 'R', toRight),
-                bottomCoords = transform(topCoords, 'B', toBottom),
-                leftCoords = transform(topCoords, 'L', toLeft);
-          [topCoords, rightCoords, bottomCoords, leftCoords].forEach(area => {
-            Object.entries(area).forEach(([n, pos]) => { this.nodePositions[n] = pos; this.graph[n] = this.graph[n] || []; });
-          });
-          const addAreaEdges = prefix => {
-            for(let i = 1; i <= 7; i++) this.graph[prefix+i] = this.graph[prefix+i] || [];
-            [['1','2'], ['2','3'], ['1','4'], ['2','5'], ['3','6'], ['4','5'], ['5','6'], ['4','7'], ['5','7'], ['6','7']]
-              .forEach(pair => addConn(prefix+pair[0], prefix+pair[1]));
-          };
-          ['T','R','B','L'].forEach(addAreaEdges);
-          initBoardState();
-          const starts = { T: ['T1','T2','T3','T4','T5','T6','T7'],
-                           R: ['R1','R2','R3','R4','R5','R6','R7'],
-                           B: ['B1','B2','B3','B4','B5','B6','B7'],
-                           L: ['L1','L2','L3','L4','L5','L6','L7'] };
-          this.players.forEach(p => starts[p.area].forEach(n => this.boardState[n] = { player: p.id, color: p.color }));
-        }
+        });
+        const addAreaEdges = prefix => {
+          for(let i = 1; i <= 7; i++) this.graph[prefix+i] = this.graph[prefix+i] || [];
+          [['1','2'], ['2','3'], ['1','4'], ['2','5'], ['3','6'], ['4','5'], ['5','6'], ['4','7'], ['5','7'], ['6','7']]
+            .forEach(pair => addConn(prefix+pair[0], prefix+pair[1]));
+        };
+        ['T','R','B','L'].forEach(addAreaEdges);
+        initBoardState();
+        const starts = { 
+          T: ['T1','T2','T3','T4','T5','T6','T7'],
+          R: ['R1','R2','R3','R4','R5','R6','R7'],
+          B: ['B1','B2','B3','B4','B5','B6','B7'],
+          L: ['L1','L2','L3','L4','L5','L6','L7'] 
+        };
+        this.players.forEach(p => 
+          starts[p.area].forEach(n => this.boardState[n] = { player: p.id, color: p.color })
+        );
       }
-      
+    }
     
     renderGameUI() {
         const scoreFontSize = (this.totalPlayers === 4) ? "16px" : "20px";
@@ -437,7 +483,7 @@ class GameApp {
 
     updateScoreDisplay() {
         // Choose a smaller font size if there are 4 players.
-        const fontSize = (this.players.length === 4) ? "18px" : "22px";
+        const fontSize = (this.players.length === 4) ? "16px" : "20px";
         
         let scoreHTML = `<strong style="font-size: ${fontSize};">Scores:</strong> `;
         this.players.forEach(p => {
