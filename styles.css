@@ -81,6 +81,7 @@ body.four-players #scoreDisplay {
 .reset-btn {
     background-color: #f44336;
     color: white;
+    display: none;
 }
 
 /* Canvas Styling (Dynamic Scaling) */
